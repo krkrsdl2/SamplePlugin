@@ -1,15 +1,19 @@
 //---------------------------------------------------------------------------
+#if 0
 #include <windows.h>
 
 #include "tp_stub.h"
 	// tp_stub.h と tp_stub.cpp は必ずプロジェクトに追加する
 #define EXPORT(hr) extern "C" __declspec(dllexport) hr __stdcall
+#endif
+#include "ncbind/ncbind.hpp"
 #include "wave.h"
 #include "mosaic.h"
 #include "turn.h"
 #include "rotatetrans.h"
 #include "ripple.h"
 
+#if 0
 //---------------------------------------------------------------------------
 #pragma argsused
 int WINAPI DllEntryPoint(HINSTANCE hinst, unsigned long reason, void* lpReserved)
@@ -68,4 +72,16 @@ EXPORTS
 	と記述してプロジェクトに追加する必要がある。
 */
 //---------------------------------------------------------------------------
+#endif
 
+static void init_extrans()
+{
+	// トランジションハンドラプロバイダの登録
+	RegisterWaveTransHandlerProvider();
+	RegisterMosaicTransHandlerProvider();
+	RegisterTurnTransHandlerProvider();
+	RegisterRotateTransHandlerProvider();
+	RegisterRippleTransHandlerProvider();
+}
+
+NCB_PRE_REGIST_CALLBACK(init_extrans);

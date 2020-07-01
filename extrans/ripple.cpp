@@ -4,12 +4,16 @@
 	#pragma inline
 #endif
 
+#if 0
 #include <windows.h>
+#endif
 #include "tp_stub.h"
 #include <math.h>
 #include "ripple.h"
 #include "common.h"
+#if 0
 #include <intrin.h>
+#endif
 
 //---------------------------------------------------------------------------
 /*
