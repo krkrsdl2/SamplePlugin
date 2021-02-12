@@ -1,0 +1,6 @@
+[submodule "external/tp_stubz"]
+	path = external/tp_stubz
+	url = ../tp_stubz
+[submodule "external/tvpsnd"]
+	path = external/tvpsnd
+	url = ../tvpsnd
