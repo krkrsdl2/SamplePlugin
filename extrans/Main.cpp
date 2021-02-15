@@ -6,7 +6,7 @@
 	// tp_stub.h と tp_stub.cpp は必ずプロジェクトに追加する
 #define EXPORT(hr) extern "C" __declspec(dllexport) hr __stdcall
 #endif
-#include "ncbind/ncbind.hpp"
+#include "tp_stub.h"
 #include "wave.h"
 #include "mosaic.h"
 #include "turn.h"
@@ -74,7 +74,46 @@ EXPORTS
 //---------------------------------------------------------------------------
 #endif
 
-static void init_extrans()
+//---------------------------------------------------------------------------
+// tTJSNC_ExtransInternal : extrans internal class
+//---------------------------------------------------------------------------
+class tTJSNC_ExtransInternal : public tTJSNativeClass
+{
+public:
+	tTJSNC_ExtransInternal();
+
+	static tjs_uint32 ClassID;
+
+protected:
+	tTJSNativeInstance * CreateNativeInstance();
+};
+
+//---------------------------------------------------------------------------
+// tTJSNC_ExtransInternal
+//---------------------------------------------------------------------------
+tjs_uint32 tTJSNC_ExtransInternal::ClassID = -1;
+tTJSNC_ExtransInternal::tTJSNC_ExtransInternal() : tTJSNativeClass(TJS_W("ExtransInternal"))
+{
+	TJS_BEGIN_NATIVE_MEMBERS(ExtransInternal)
+	TJS_DECL_EMPTY_FINALIZE_METHOD
+//----------------------------------------------------------------------
+TJS_BEGIN_NATIVE_CONSTRUCTOR_DECL_NO_INSTANCE(/*TJS class name*/ExtransInternal)
+{
+	return TJS_S_OK;
+}
+TJS_END_NATIVE_CONSTRUCTOR_DECL(/*TJS class name*/ExtransInternal)
+//----------------------------------------------------------------------
+
+//----------------------------------------------------------------------
+	TJS_END_NATIVE_MEMBERS
+
+} // end of tTJSNC_ExtransInternal::tTJSNC_ExtransInternal
+//---------------------------------------------------------------------------
+tTJSNativeInstance *tTJSNC_ExtransInternal::CreateNativeInstance()
+{
+	return NULL;
+}
+static iTJSDispatch2 * TVPCreateNativeClass_ExtransInternal(iTJSDispatch2* global)
 {
 	// トランジションハンドラプロバイダの登録
 	RegisterWaveTransHandlerProvider();
@@ -82,6 +121,8 @@ static void init_extrans()
 	RegisterTurnTransHandlerProvider();
 	RegisterRotateTransHandlerProvider();
 	RegisterRippleTransHandlerProvider();
+	iTJSDispatch2 *cls = new tTJSNC_ExtransInternal();
+	return cls;
 }
 
-NCB_PRE_REGIST_CALLBACK(init_extrans);
+static tTVPAtInstallClass TVPInstallClassExtransInternal(TJS_W("ExtransInternal"), TVPCreateNativeClass_ExtransInternal, TJS_W(""));

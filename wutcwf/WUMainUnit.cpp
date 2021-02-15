@@ -5,7 +5,7 @@
 #include "tvpsnd.h"
 #define EXPORT(hr) extern "C" __declspec(dllexport) hr __stdcall
 #endif
-#include "ncbind/ncbind.hpp"
+#include "tp_stub.h"
 #include <stdio.h>
 //---------------------------------------------------------------------------
 #if 0
@@ -692,12 +692,54 @@ bool TCWFDecoder::ReadBlock(int numchans, int chan)
 //---------------------------------------------------------------------------
 
 static TCWFWaveDecoderCreator creator;
-static void _init()
+
+//---------------------------------------------------------------------------
+// tTJSNC_WutcwfInternal : wutcwf internal class
+//---------------------------------------------------------------------------
+class tTJSNC_WutcwfInternal : public tTJSNativeClass
+{
+public:
+	tTJSNC_WutcwfInternal();
+
+	static tjs_uint32 ClassID;
+
+protected:
+	tTJSNativeInstance * CreateNativeInstance();
+};
+
+//---------------------------------------------------------------------------
+// tTJSNC_WutcwfInternal
+//---------------------------------------------------------------------------
+tjs_uint32 tTJSNC_WutcwfInternal::ClassID = -1;
+tTJSNC_WutcwfInternal::tTJSNC_WutcwfInternal() : tTJSNativeClass(TJS_W("WutcwfInternal"))
+{
+	TJS_BEGIN_NATIVE_MEMBERS(WutcwfInternal)
+	TJS_DECL_EMPTY_FINALIZE_METHOD
+//----------------------------------------------------------------------
+TJS_BEGIN_NATIVE_CONSTRUCTOR_DECL_NO_INSTANCE(/*TJS class name*/WutcwfInternal)
+{
+	return TJS_S_OK;
+}
+TJS_END_NATIVE_CONSTRUCTOR_DECL(/*TJS class name*/WutcwfInternal)
+//----------------------------------------------------------------------
+
+//----------------------------------------------------------------------
+	TJS_END_NATIVE_MEMBERS
+
+} // end of tTJSNC_WutcwfInternal::tTJSNC_WutcwfInternal
+//---------------------------------------------------------------------------
+tTJSNativeInstance *tTJSNC_WutcwfInternal::CreateNativeInstance()
+{
+	return NULL;
+}
+static iTJSDispatch2 * TVPCreateNativeClass_WutcwfInternal(iTJSDispatch2* global)
 {
 	TVPRegisterWaveDecoderCreator(&creator);
+	iTJSDispatch2 *cls = new tTJSNC_WutcwfInternal();
+	return cls;
 }
 
-NCB_PRE_REGIST_CALLBACK(_init);
+static tTVPAtInstallClass TVPInstallClassWutcwfInternal(TJS_W("WutcwfInternal"), TVPCreateNativeClass_WutcwfInternal, TJS_W(""));
 
 // ##########################################################################
 //---------------------------------------------------------------------------
