@@ -16,9 +16,11 @@ int WINAPI DllEntryPoint(HINSTANCE hinst, unsigned long reason, void* lpReserved
 }
 #endif
 #include "WaveIntf.h"
+#ifndef _WIN32
 #include "istream_compat.h"
 #define byte BYTE
 #define __int64 int64_t
+#endif
 
 //---------------------------------------------------------------------------
 #pragma pack(push,1)
