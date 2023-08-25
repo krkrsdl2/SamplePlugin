@@ -108,7 +108,7 @@
         },
         {
           "name" : "Archive artifact",
-          "run" : "cd build && 7z a -tzip ${{ github.event.repository.name }}-ubuntu.zip *.so"
+          "run" : "cd build && 7z a -tzip ${{ github.event.repository.name }}-macos.zip *.so"
         },
         {
           "name" : "Upload artifact",
