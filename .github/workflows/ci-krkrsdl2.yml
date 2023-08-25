@@ -1,0 +1,155 @@
+{
+  "name" : "Continuous Integration (Kirikiri SDL2)",
+  "on" : {
+    "push" : {
+      "paths" : [
+        "**.c",
+        "**.h",
+        "**.cpp",
+        "**.hpp",
+        "**.build",
+        "**.in",
+        "**.py",
+        "**.yml",
+        "**.gradle",
+        "CMakeLists.txt"
+      ]
+    },
+    "pull_request" : {
+      "paths" : [
+        "**.c",
+        "**.h",
+        "**.cpp",
+        "**.hpp",
+        "**.build",
+        "**.in",
+        "**.py",
+        "**.yml",
+        "**.gradle",
+        "CMakeLists.txt"
+      ]
+    }
+  },
+  "env" : {
+    "CMAKE_GENERATOR" : "Ninja",
+    "HOMEBREW_NO_ANALYTICS" : "1",
+    "HOMEBREW_NO_AUTO_UPDATE" : "1",
+    "HOMEBREW_NO_INSTALL_UPGRADE" : "1",
+    "HOMEBREW_NO_INSTALL_CLEANUP" : "1",
+  },
+  "jobs" : {
+    "build-ubuntu" : {
+      "runs-on" : "ubuntu-20.04",
+      "timeout-minutes" : 20,
+      "steps" : [
+        {
+          "name" : "Checkout repository",
+          "uses" : "actions/checkout@v3",
+          "with" : {
+            "submodules" : "recursive"
+          }
+        },
+        {
+          "name" : "Install dependencies",
+          "run" : "sudo apt-get update && sudo apt-get install build-essential libsdl2-dev"
+        },
+        {
+          "name" : "Set up Homebrew environment for Github Actions",
+          "run" : "echo \"/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin\" >> $GITHUB_PATH"
+        },
+        {
+          "name" : "Set up default build tools",
+          "run" : "brew install make nasm ninja cmake"
+        },
+        {
+          "name" : "Configure project",
+          "run" : "cmake -S . -B build"
+        },
+        {
+          "name" : "Build project",
+          "run" : "cmake --build build"
+        },
+        {
+          "name" : "Archive artifact",
+          "run" : "cd build && 7z a -tzip ${{ github.event.repository.name }}-ubuntu.zip *.so"
+        },
+        {
+          "name" : "Upload artifact",
+          "uses" : "actions/upload-artifact@master",
+          "with" : {
+            "name" : "${{ github.event.repository.name }}-ubuntu",
+            "path" : "build/*.zip"
+          }
+        }
+      ]
+    },
+    "build-macos-cmake" : {
+      "runs-on" : "macos-11",
+      "timeout-minutes" : 20,
+      "steps" : [
+        {
+          "name" : "Checkout repository",
+          "uses" : "actions/checkout@v3",
+          "with" : {
+            "submodules" : "recursive"
+          }
+        },
+        {
+          "name" : "Set up default build tools",
+          "run" : "brew install make nasm ninja cmake"
+        },
+        {
+          "name" : "Configure project",
+          "run" : "cmake -S . -B build"
+        },
+        {
+          "name" : "Build project",
+          "run" : "cmake --build build"
+        },
+        {
+          "name" : "Archive artifact",
+          "run" : "ditto -ck --rsrc --sequesterRsrc build/*.so build/${{ github.event.repository.name }}-macos.zip"
+        },
+        {
+          "name" : "Upload artifact",
+          "uses" : "actions/upload-artifact@master",
+          "with" : {
+            "name" : "${{ github.event.repository.name }}-macos",
+            "path" : "build/*.zip"
+          }
+        }
+      ]
+    },
+    "create-release" : {
+      "needs" : [
+        "build-macos-cmake",
+        "build-ubuntu"
+      ],
+      "runs-on" : "ubuntu-20.04",
+      "timeout-minutes" : 20,
+      "if" : "github.ref == 'refs/heads/main'",
+      "steps" : [
+        {
+          "name" : "Download all artifacts",
+          "uses" : "actions/download-artifact@v3"
+        },
+        {
+          "name" : "Prepare artifacts for release",
+          "run" : "cp -t . ${{ github.event.repository.name }}-*/*.zip"
+        },
+        {
+          "name" : "Create prerelease",
+          "if" : "github.ref == 'refs/heads/main'",
+          "uses" : "marvinpinto/action-automatic-releases@latest",
+          "with" : {
+            "repo_token" : "${{ secrets.GITHUB_TOKEN }}",
+            "prerelease" : "true",
+            "automatic_release_tag" : "latest",
+            "title" : "Latest development builds",
+            "files" : "*.zip"
+          }
+        }
+      ]
+    }
+  }
+}
