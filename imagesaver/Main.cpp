@@ -10,6 +10,7 @@
 #define EXPORT(hr) extern "C" __attribute__((visibility ("default"))) hr
 #endif
 #endif
+#include <cstring>
 //---------------------------------------------------------------------------
 
 #ifndef _WIN32
