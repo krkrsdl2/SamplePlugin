@@ -1,26 +1,33 @@
 //---------------------------------------------------------------------------
 #if 0
 #include <windows.h>
+#endif
 
 #include "tp_stub.h"
 	// tp_stub.h と tp_stub.cpp は必ずプロジェクトに追加する
+#ifndef TVP_COMPILING_KRKRSDL2
+#ifdef _WIN32
 #define EXPORT(hr) extern "C" __declspec(dllexport) hr __stdcall
+#else
+#define EXPORT(hr) extern "C" __attribute__((visibility ("default"))) hr
 #endif
-#include "tp_stub.h"
+#endif
 #include "wave.h"
 #include "mosaic.h"
 #include "turn.h"
 #include "rotatetrans.h"
 #include "ripple.h"
 
-#if 0
+#ifndef TVP_COMPILING_KRKRSDL2
 //---------------------------------------------------------------------------
+#ifdef _WIN32
 #pragma argsused
 int WINAPI DllEntryPoint(HINSTANCE hinst, unsigned long reason, void* lpReserved)
 {
 	// DLL エントリポイント
 	return 1;
 }
+#endif
 //---------------------------------------------------------------------------
 // V2Link は DLL がリンクされるときに実行される
 EXPORT(HRESULT) V2Link(iTVPFunctionExporter *exporter)
@@ -74,6 +81,7 @@ EXPORTS
 //---------------------------------------------------------------------------
 #endif
 
+#ifdef TVP_COMPILING_KRKRSDL2
 //---------------------------------------------------------------------------
 // tTJSNC_ExtransInternal : extrans internal class
 //---------------------------------------------------------------------------
@@ -126,3 +134,4 @@ static iTJSDispatch2 * TVPCreateNativeClass_ExtransInternal(iTJSDispatch2* globa
 }
 
 static tTVPAtInstallClass TVPInstallClassExtransInternal(TJS_W("ExtransInternal"), TVPCreateNativeClass_ExtransInternal, TJS_W(""));
+#endif

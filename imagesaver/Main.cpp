@@ -1,9 +1,48 @@
 //---------------------------------------------------------------------------
+#if 0
 #include <windows.h>
+#endif
 #include "tp_stub.h"
+#ifndef TVP_COMPILING_KRKRSDL2
+#ifdef _WIN32
 #define EXPORT(hr) extern "C" __declspec(dllexport) hr __stdcall
+#else
+#define EXPORT(hr) extern "C" __attribute__((visibility ("default"))) hr
+#endif
+#endif
 //---------------------------------------------------------------------------
 
+#ifndef _WIN32
+#ifndef BI_RGB // avoid re-define error on Win32
+	#define BI_RGB			0
+	#define BI_RLE8			1
+	#define BI_RLE4			2
+	#define BI_BITFIELDS	3
+#endif
+
+struct BITMAPFILEHEADER
+{
+	tjs_uint16	bfType;
+	tjs_uint32	bfSize;
+	tjs_uint16	bfReserved1;
+	tjs_uint16	bfReserved2;
+	tjs_uint32	bfOffBits;
+};
+struct BITMAPINFOHEADER
+{
+	tjs_uint32	biSize;
+	tjs_int		biWidth;
+	tjs_int		biHeight;
+	tjs_uint16	biPlanes;
+	tjs_uint16	biBitCount;
+	tjs_uint32	biCompression;
+	tjs_uint32	biSizeImage;
+	tjs_int		biXPelsPerMeter;
+	tjs_int		biYPelsPerMeter;
+	tjs_uint32	biClrUsed;
+	tjs_uint32	biClrImportant;
+};
+#endif
 
 //---------------------------------------------------------------------------
 // BMP での画像保存
@@ -40,7 +79,7 @@ void SaveAsBMP(const ttstr & name, tjs_int width, tjs_int height,
 		bfh.bfReserved2 = 0;
 		bfh.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
 
-		unsigned long written;
+		ULONG written;
 		out->Write(&bfh, sizeof(bfh), &written);
 		if(written != sizeof(bfh))
 			TVPThrowExceptionMessage((ttstr(TJS_W("write failed : ")) +
@@ -127,7 +166,7 @@ class tSaveLayerImageFunction : public tTJSDispatch
 
 		if(TJS_FAILED(layerobj->PropGet(0, TJS_W("mainImageBuffer"), NULL, &val, layerobj)))
 			TVPThrowExceptionMessage(TJS_W("invoking of Layer.mainImageBuffer failed."));
-		bufferptr = (const tjs_uint8 *)(tjs_int)val;
+		bufferptr = (const tjs_uint8 *)(tjs_uintptr_t)(tTVInteger)val;
 
 		if(TJS_FAILED(layerobj->PropGet(0, TJS_W("mainImageBufferPitch"), NULL, &val, layerobj)))
 			TVPThrowExceptionMessage(TJS_W("invoking of Layer.mainImageBufferPitch failed."));
@@ -158,11 +197,13 @@ class tSaveLayerImageFunction : public tTJSDispatch
 
 
 //---------------------------------------------------------------------------
+#ifdef _WIN32
 #pragma argsused
 int WINAPI DllEntryPoint(HINSTANCE hinst, unsigned long reason, void* lpReserved)
 {
 	return 1;
 }
+#endif
 //---------------------------------------------------------------------------
 static tjs_int GlobalRefCountAtInit = 0;
 EXPORT(HRESULT) V2Link(iTVPFunctionExporter *exporter)

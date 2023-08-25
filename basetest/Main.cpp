@@ -102,12 +102,22 @@ var avg = average(0, 1, 2);
 
 
 //---------------------------------------------------------------------------
+#if 0
 #include <windows.h>
+#endif
 #include "tp_stub.h"
 
+#ifndef TVP_COMPILING_KRKRSDL2
+#ifdef _WIN32
 #define EXPORT(hr) extern "C" __declspec(dllexport) hr __stdcall
+#else
+#define EXPORT(hr) extern "C" __attribute__((visibility ("default"))) hr
+#endif
+#endif
 
+#if 0
 #include <lmcons.h>
+#endif
 //---------------------------------------------------------------------------
 
 
@@ -267,6 +277,7 @@ tjs_error TJS_INTF_METHOD tSumFunction::FuncCall(
 
 
 
+#if 0
 //---------------------------------------------------------------------------
 // テスト関数 さらにもういっこ
 //---------------------------------------------------------------------------
@@ -333,11 +344,13 @@ tjs_error TJS_INTF_METHOD tMessageBoxFunction::FuncCall(
 	return TJS_S_OK;
 }
 //---------------------------------------------------------------------------
+#endif
 
 
 
 
 
+#if 0
 //---------------------------------------------------------------------------
 // テスト関数 さらにさらにもういっこ
 //---------------------------------------------------------------------------
@@ -432,6 +445,7 @@ tjs_error TJS_INTF_METHOD tGetUserNameFunction::FuncCall(
 	return TJS_S_OK;
 }
 //---------------------------------------------------------------------------
+#endif
 
 
 
@@ -439,11 +453,13 @@ tjs_error TJS_INTF_METHOD tGetUserNameFunction::FuncCall(
 
 
 //---------------------------------------------------------------------------
+#ifdef _WIN32
 int WINAPI DllEntryPoint(HINSTANCE hinst, unsigned long reason,
 	void* lpReserved)
 {
 	return 1;
 }
+#endif
 //---------------------------------------------------------------------------
 static tjs_int GlobalRefCountAtInit = 0;
 EXPORT(HRESULT) V2Link(iTVPFunctionExporter *exporter)
@@ -507,6 +523,7 @@ EXPORT(HRESULT) V2Link(iTVPFunctionExporter *exporter)
 
 
 
+#if 0
 	//-----------------------------------------------------------------------
 	// 1 まずオブジェクトを作成
 	MessageBoxFunction = new tMessageBoxFunction();
@@ -528,9 +545,11 @@ EXPORT(HRESULT) V2Link(iTVPFunctionExporter *exporter)
 		global // コンテキスト ( global でよい )
 		);
 	//-----------------------------------------------------------------------
+#endif
 
 
 
+#if 0
 	//-----------------------------------------------------------------------
 	// 1 まずオブジェクトを作成
 	GetUserNameFunction = new tGetUserNameFunction();
@@ -552,6 +571,7 @@ EXPORT(HRESULT) V2Link(iTVPFunctionExporter *exporter)
 		global // コンテキスト ( global でよい )
 		);
 	//-----------------------------------------------------------------------
+#endif
 
 
 
@@ -613,6 +633,7 @@ EXPORT(HRESULT) V2Unlink()
 			NULL, // ヒント
 			global // コンテキスト
 			);
+#if 0
 		global->DeleteMember(
 			0, // フラグ ( 0 でよい )
 			TJS_W("messagebox"), // メンバ名
@@ -625,6 +646,7 @@ EXPORT(HRESULT) V2Unlink()
 			NULL, // ヒント
 			global // コンテキスト
 			);
+#endif
 			// 登録した関数が複数ある場合は これを繰り返す
 	}
 

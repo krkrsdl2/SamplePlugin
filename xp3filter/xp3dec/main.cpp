@@ -27,9 +27,17 @@
 
 
 //---------------------------------------------------------------------------
+#if 0
 #include <windows.h>
+#endif
 #include "tp_stub.h"
+#ifndef TVP_COMPILING_KRKRSDL2
+#ifdef _WIN32
 #define EXPORT(hr) extern "C" __declspec(dllexport) hr __stdcall
+#else
+#define EXPORT(hr) extern "C" __attribute__((visibility ("default"))) hr
+#endif
+#endif
 	// tp_stub.h にはインクルード・パスを指定しておきます。
 	// tp_stub.cpp および tp_stub.h のバージョンは吉里吉里本体と
 	// 同時期の物であることが好ましいです。
@@ -89,12 +97,14 @@ void TVP_tTVPXP3ArchiveExtractionFilter_CONVENTION
 
 
 //---------------------------------------------------------------------------
+#ifdef _WIN32
 //#pragma argsused
 int WINAPI DllEntryPoint(HINSTANCE hinst, unsigned long reason,
 	void* lpReserved)
 {
 	return 1;
 }
+#endif
 //---------------------------------------------------------------------------
 EXPORT(HRESULT) V2Link(iTVPFunctionExporter *exporter)
 {

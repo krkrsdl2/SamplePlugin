@@ -2,9 +2,17 @@
 
 
 //---------------------------------------------------------------------------
+#if 0
 #include <windows.h>
+#endif
 #include "tp_stub.h"
+#ifndef TVP_COMPILING_KRKRSDL2
+#ifdef _WIN32
 #define EXPORT(hr) extern "C" __declspec(dllexport) hr __stdcall
+#else
+#define EXPORT(hr) extern "C" __attribute__((visibility ("default"))) hr
+#endif
+#endif
 //---------------------------------------------------------------------------
 
 
@@ -289,12 +297,14 @@ static iTJSDispatch2 * Create_NC_Test()
 
 
 //---------------------------------------------------------------------------
+#ifdef _WIN32
 #pragma argsused
 int WINAPI DllEntryPoint(HINSTANCE hinst, unsigned long reason,
 	void* lpReserved)
 {
 	return 1;
 }
+#endif
 //---------------------------------------------------------------------------
 static tjs_int GlobalRefCountAtInit = 0;
 EXPORT(HRESULT) V2Link(iTVPFunctionExporter *exporter)
