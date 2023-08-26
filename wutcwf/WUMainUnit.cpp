@@ -11,7 +11,7 @@
 #define EXPORT(hr) extern "C" __attribute__((visibility ("default"))) hr
 #endif
 #else
-#define EXPORT(hr) static hr
+#define EXPORT(hr) static hr STDMETHODCALLTYPE
 #endif
 #include "tp_stub.h"
 #include <stdio.h>
