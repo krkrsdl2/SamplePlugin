@@ -16,6 +16,9 @@
 #include "tp_stub.h"
 #include <stdio.h>
 #include <cstring>
+#ifdef _WIN32
+#include "tvpsnd.h"
+#endif
 //---------------------------------------------------------------------------
 #ifndef TVP_COMPILING_KRKRSDL2
 #ifdef _WIN32
