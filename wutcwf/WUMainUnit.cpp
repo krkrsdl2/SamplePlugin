@@ -3,22 +3,30 @@
 #if 0
 #include <windows.h>
 #include "tvpsnd.h"
+#endif
+#ifndef TVP_COMPILING_KRKRSDL2
+#ifdef _WIN32
 #define EXPORT(hr) extern "C" __declspec(dllexport) hr __stdcall
+#else
+#define EXPORT(hr) extern "C" __attribute__((visibility ("default"))) hr
+#endif
+#else
+#define EXPORT(hr) static hr
 #endif
 #include "tp_stub.h"
 #include <stdio.h>
 //---------------------------------------------------------------------------
-#if 0
+#ifndef TVP_COMPILING_KRKRSDL2
+#ifdef _WIN32
 #pragma argsused
 int WINAPI DllEntryPoint(HINSTANCE hinst, unsigned long reason, void* lpReserved)
 {
 	return 1;
 }
 #endif
-#include "WaveIntf.h"
+#endif
 #ifndef _WIN32
 #define byte BYTE
-#define __int64 int64_t
 #endif
 
 //---------------------------------------------------------------------------
@@ -82,15 +90,14 @@ static int ima_step_size [89] =
 	32767
 } ;
 //---------------------------------------------------------------------------
-#if 0
 //---------------------------------------------------------------------------
-void strcpy_limit(LPWSTR dest, LPWSTR  src, int n)
+static void strcpy_limit(TSS_LPWSTR dest, const TSS_LPWSTR  src, int n)
 {
-	wcsncpy(dest, src, n-1);
+	TJS_strncpy(dest, src, n-1);
 	dest[n-1] = '\0';
 }
 //---------------------------------------------------------------------------
-ITSSStorageProvider *StorageProvider = NULL;
+static ITSSStorageProvider *StorageProvider = NULL;
 //---------------------------------------------------------------------------
 class TCWFModule : public ITSSModule
 {
@@ -102,17 +109,17 @@ public:
 
 public:
 	// IUnknown
-	HRESULT __stdcall QueryInterface(REFIID iid, void ** ppvObject);
-	ULONG __stdcall AddRef(void);
-	ULONG __stdcall Release(void);
+	HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void ** ppvObject);
+	ULONG STDMETHODCALLTYPE AddRef(void);
+	ULONG STDMETHODCALLTYPE Release(void);
 	
 	// ITSSModule
-	HRESULT __stdcall GetModuleCopyright(LPWSTR buffer, unsigned long buflen );
-	HRESULT __stdcall GetModuleDescription(LPWSTR buffer, unsigned long buflen );
-	HRESULT __stdcall GetSupportExts(unsigned long index, LPWSTR mediashortname, LPWSTR buf, unsigned long buflen );
-	HRESULT __stdcall GetMediaInfo(LPWSTR url, ITSSMediaBaseInfo ** info );
-	HRESULT __stdcall GetMediaSupport(LPWSTR url );
-	HRESULT __stdcall GetMediaInstance(LPWSTR url, IUnknown ** instance );
+	HRESULT STDMETHODCALLTYPE GetModuleCopyright(TSS_LPWSTR buffer, TSS_ULONG buflen );
+	HRESULT STDMETHODCALLTYPE GetModuleDescription(TSS_LPWSTR buffer, TSS_ULONG buflen );
+	HRESULT STDMETHODCALLTYPE GetSupportExts(TSS_ULONG index, TSS_LPWSTR mediashortname, TSS_LPWSTR buf, TSS_ULONG buflen );
+	HRESULT STDMETHODCALLTYPE GetMediaInfo(TSS_LPWSTR url, ITSSMediaBaseInfo ** info );
+	HRESULT STDMETHODCALLTYPE GetMediaSupport(TSS_LPWSTR url );
+	HRESULT STDMETHODCALLTYPE GetMediaInstance(TSS_LPWSTR url, IUnknown ** instance );
 };
 //---------------------------------------------------------------------------
 
@@ -123,12 +130,12 @@ class TCWFDecoder : public ITSSWaveDecoder
 	ULONG RefCount;
 	TTCWFHeader Header; // ヘッダ情報
 	IStream *InputStream;
-	__int64 StreamPos;
+	TSS_INT64 StreamPos;
 	short int *SamplePos;
-	long DataStart;
-	long DataSize;
-	__int64 Pos;
-	long BufferRemain;
+	TSS_LONG DataStart;
+	TSS_LONG DataSize;
+	TSS_INT64 Pos;
+	TSS_LONG BufferRemain;
 	BYTE *BlockBuffer;
 	short int *Samples;
 	TSSWaveFormat TSSFormat;
@@ -139,18 +146,18 @@ public:
 
 public:
 	// IUnkown
-	HRESULT __stdcall QueryInterface(REFIID iid, void ** ppvObject);
-	ULONG __stdcall AddRef(void);
-	ULONG __stdcall Release(void);
+	HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void ** ppvObject);
+	ULONG STDMETHODCALLTYPE AddRef(void);
+	ULONG STDMETHODCALLTYPE Release(void);
 
 	// ITSSWaveDecoder
-	HRESULT __stdcall GetFormat(TSSWaveFormat *format);
-	HRESULT __stdcall Render(void *buf, unsigned long bufsamplelen,
-			unsigned long *rendered, unsigned long *status);
-	HRESULT __stdcall SetPosition(unsigned __int64 samplepos);
+	HRESULT STDMETHODCALLTYPE GetFormat(TSSWaveFormat *format);
+	HRESULT STDMETHODCALLTYPE Render(void *buf, TSS_ULONG bufsamplelen,
+			TSS_ULONG *rendered, TSS_ULONG *status);
+	HRESULT STDMETHODCALLTYPE SetPosition(TSS_UINT64 samplepos);
 
 	// そのほか
-	HRESULT Open(wchar_t * url);
+	HRESULT Open(TSS_LPWSTR url);
 	bool ReadBlock(int , int );
 };
 //---------------------------------------------------------------------------
@@ -165,7 +172,7 @@ TCWFModule::~TCWFModule()
 {
 }
 //---------------------------------------------------------------------------
-HRESULT __stdcall TCWFModule::QueryInterface(REFIID iid, void ** ppvObject)
+HRESULT STDMETHODCALLTYPE TCWFModule::QueryInterface(REFIID iid, void ** ppvObject)
 {
 	if(!ppvObject) return E_INVALIDARG;
 
@@ -183,12 +190,12 @@ HRESULT __stdcall TCWFModule::QueryInterface(REFIID iid, void ** ppvObject)
 	return E_NOINTERFACE;
 }
 //---------------------------------------------------------------------------
-ULONG __stdcall TCWFModule::AddRef()
+ULONG STDMETHODCALLTYPE TCWFModule::AddRef()
 {
 	return ++RefCount;
 }
 //---------------------------------------------------------------------------
-ULONG __stdcall TCWFModule::Release()
+ULONG STDMETHODCALLTYPE TCWFModule::Release()
 {
 	if(RefCount == 1)
 	{
@@ -201,39 +208,39 @@ ULONG __stdcall TCWFModule::Release()
 	}
 }
 //---------------------------------------------------------------------------
-HRESULT __stdcall TCWFModule::GetModuleCopyright(LPWSTR buffer, unsigned long buflen)
+HRESULT STDMETHODCALLTYPE TCWFModule::GetModuleCopyright(TSS_LPWSTR buffer, TSS_ULONG buflen)
 {
-	strcpy_limit(buffer, L"TCWF decoder for TVP Sound System (C) 2000 W.Dee <dee@kikyou.info>",
+	strcpy_limit(buffer, TJS_W("TCWF decoder for TVP Sound System (C) 2000 W.Dee <dee@kikyou.info>"),
 			buflen);
 	return S_OK;
 }
 //---------------------------------------------------------------------------
-HRESULT __stdcall TCWFModule::GetModuleDescription(LPWSTR buffer, unsigned long buflen )
+HRESULT STDMETHODCALLTYPE TCWFModule::GetModuleDescription(TSS_LPWSTR buffer, TSS_ULONG buflen )
 {
-	strcpy_limit(buffer, L"TVP's Compressed Wave Format decoder (*.tcw)", buflen);
+	strcpy_limit(buffer, TJS_W("TVP's Compressed Wave Format decoder (*.tcw)"), buflen);
 	return S_OK;
 }
 //---------------------------------------------------------------------------
-HRESULT __stdcall TCWFModule::GetSupportExts(unsigned long index, LPWSTR mediashortname,
-												LPWSTR buf, unsigned long buflen )
+HRESULT STDMETHODCALLTYPE TCWFModule::GetSupportExts(TSS_ULONG index, TSS_LPWSTR mediashortname,
+												TSS_LPWSTR buf, TSS_ULONG buflen )
 {
 	if(index >= 1) return S_FALSE;
-	wcscpy(mediashortname, L"TCWF ファイル");
-	strcpy_limit(buf, L".tcw", buflen);
+	TJS_strcpy(mediashortname, TJS_W("TCWF ファイル"));
+	strcpy_limit(buf, TJS_W(".tcw"), buflen);
 	return S_OK;
 }
 //---------------------------------------------------------------------------
-HRESULT __stdcall TCWFModule::GetMediaInfo(LPWSTR url, ITSSMediaBaseInfo ** info )
+HRESULT STDMETHODCALLTYPE TCWFModule::GetMediaInfo(TSS_LPWSTR url, ITSSMediaBaseInfo ** info )
 {
 	return E_NOTIMPL;
 }
 //---------------------------------------------------------------------------
-HRESULT __stdcall TCWFModule::GetMediaSupport(LPWSTR url )
+HRESULT STDMETHODCALLTYPE TCWFModule::GetMediaSupport(TSS_LPWSTR url )
 {
 	return E_NOTIMPL;
 }
 //---------------------------------------------------------------------------
-HRESULT __stdcall TCWFModule::GetMediaInstance(LPWSTR url, IUnknown ** instance )
+HRESULT STDMETHODCALLTYPE TCWFModule::GetMediaInstance(TSS_LPWSTR url, IUnknown ** instance )
 {
 	HRESULT hr;
 	TCWFDecoder * decoder = new TCWFDecoder();
@@ -248,56 +255,12 @@ HRESULT __stdcall TCWFModule::GetMediaInstance(LPWSTR url, IUnknown ** instance 
 
 	return S_OK;
 }
-#endif
-class TCWFDecoder : public tTVPWaveDecoder
-{
-    TTCWFHeader Header;
-    IStream *InputStream;
-    tjs_int64 StreamPos;
-    short int *SamplePos;
-    long DataStart;
-    long DataSize;
-    tjs_int64 Pos;
-    long BufferRemain;
-    BYTE *BlockBuffer;
-    short int *Samples;
-    tTVPWaveFormat TSSFormat;
-
-public:
-    TCWFDecoder();
-    ~TCWFDecoder();
-
-public:
-    // ITSSWaveDecoder
-    virtual void GetFormat(tTVPWaveFormat & format);
-    virtual bool Render(void *buf, tjs_uint bufsamplelen, tjs_uint& rendered);
-    virtual bool SetPosition(tjs_uint64 samplepos);
-
-    bool Open(const ttstr & url);
-    bool ReadBlock(int , int );
-};
-
-class TCWFWaveDecoderCreator : public tTVPWaveDecoderCreator
-{
-public:
-    tTVPWaveDecoder * Create(const ttstr & storagename, const ttstr & extension) {
-        TCWFDecoder * decoder = new TCWFDecoder();
-        if(!decoder->Open(storagename))
-        {
-            delete decoder;
-            return nullptr;
-        }
-        return decoder;
-    }
-};
 //---------------------------------------------------------------------------
 // TCWFDecoder インプリメンテーション #######################################
 //---------------------------------------------------------------------------
 TCWFDecoder::TCWFDecoder()
 {
-#if 0
 	RefCount = 1;
-#endif
 	InputStream = NULL;
 	BlockBuffer=NULL;
 	Samples=NULL;
@@ -314,8 +277,7 @@ TCWFDecoder::~TCWFDecoder()
 	if(Samples) delete [] Samples;
 }
 //---------------------------------------------------------------------------
-#if 0
-HRESULT __stdcall TCWFDecoder::QueryInterface(REFIID iid, void ** ppvObject)
+HRESULT STDMETHODCALLTYPE TCWFDecoder::QueryInterface(REFIID iid, void ** ppvObject)
 {
 	if(!ppvObject) return E_INVALIDARG;
 
@@ -332,17 +294,13 @@ HRESULT __stdcall TCWFDecoder::QueryInterface(REFIID iid, void ** ppvObject)
 	}
 	return E_NOINTERFACE;
 }
-#endif
 //---------------------------------------------------------------------------
-#if 0
-ULONG __stdcall TCWFDecoder::AddRef()
+ULONG STDMETHODCALLTYPE TCWFDecoder::AddRef()
 {
 	return ++RefCount;
 }
-#endif
 //---------------------------------------------------------------------------
-#if 0
-ULONG __stdcall TCWFDecoder::Release()
+ULONG STDMETHODCALLTYPE TCWFDecoder::Release()
 {
 	if(RefCount == 1)
 	{
@@ -354,30 +312,19 @@ ULONG __stdcall TCWFDecoder::Release()
 		return --RefCount;
 	}
 }
-#endif
 //---------------------------------------------------------------------------
-#if 0
-HRESULT __stdcall TCWFDecoder::GetFormat(TSSWaveFormat *format)
+HRESULT STDMETHODCALLTYPE TCWFDecoder::GetFormat(TSSWaveFormat *format)
 {
 	*format = TSSFormat;
 
 	return S_OK;
 }
-#endif
 //---------------------------------------------------------------------------
-void TCWFDecoder::GetFormat(tTVPWaveFormat & format)
-{
-	format = TSSFormat;
-}
-//---------------------------------------------------------------------------
-#if 0
-HRESULT __stdcall TCWFDecoder::Render(void *buf, unsigned long bufsamplelen,
-            unsigned long *rendered, unsigned long *status)
-#endif
-bool TCWFDecoder::Render(void *buf, tjs_uint bufsamplelen, tjs_uint& rendered)
+HRESULT STDMETHODCALLTYPE TCWFDecoder::Render(void *buf, TSS_ULONG bufsamplelen,
+            TSS_ULONG *rendered, TSS_ULONG *status)
 {
 	// 展開
-	unsigned long n;
+	TSS_ULONG n;
 	short int *pbuf=(short int*)buf;
 	for(n=0;n<bufsamplelen;n++)
 	{
@@ -388,18 +335,12 @@ bool TCWFDecoder::Render(void *buf, tjs_uint bufsamplelen, tjs_uint& rendered)
 			{
 				if(!ReadBlock(Header.channels, i))
 				{
-#if 0
 					if(rendered)
 						*rendered = n;
 					if(status)
 						*status = 0;
-#endif
-					rendered = n;
 					Pos+=n;
-#if 0
 					return S_OK;
-#endif
-					return false;
 				}
 			}
 			SamplePos = Samples;
@@ -410,22 +351,13 @@ bool TCWFDecoder::Render(void *buf, tjs_uint bufsamplelen, tjs_uint& rendered)
 		BufferRemain--;
 	}
 
-#if 0
 	if(rendered) *rendered=n;
 	if(status) *status = 1;
-#endif
-	rendered=n;
 	Pos+=n;
-#if 0
 	return S_OK;
-#endif
-	return true;
 }
 //---------------------------------------------------------------------------
-#if 0
-HRESULT __stdcall TCWFDecoder::SetPosition(unsigned __int64 samplepos)
-#endif
-bool TCWFDecoder::SetPosition(tjs_uint64 samplepos)
+HRESULT STDMETHODCALLTYPE TCWFDecoder::SetPosition(TSS_UINT64 samplepos)
 {
 
 	// pos (ms単位) に移動する
@@ -435,28 +367,25 @@ bool TCWFDecoder::SetPosition(tjs_uint64 samplepos)
 	newpos.QuadPart=0;
 	InputStream->Seek(newpos,1,&result);
 
-	tjs_int64 bytepossave=newpos.QuadPart;
-	tjs_int64 samplepossave=Pos;
+	int64_t bytepossave=(int64_t)newpos.QuadPart;
+	TSS_INT64 samplepossave=Pos;
 
 	// 新しい位置を特定
-	long newbytepos = samplepos / (Header.samplesperblock);
-	long remnant = samplepos - newbytepos * (Header.samplesperblock);
+	TSS_LONG newbytepos = samplepos / (Header.samplesperblock);
+	TSS_LONG remnant = samplepos - newbytepos * (Header.samplesperblock);
 	Pos = samplepos;
 	newbytepos *= Header.bytesperblock * Header.channels;
 
 	// シーク
 	newpos.QuadPart=DataStart+newbytepos;
 	InputStream->Seek(newpos,0,&result);
-	if(result.QuadPart != (tjs_uint64) newpos.QuadPart)
+	if(result.QuadPart != (uint64_t) newpos.QuadPart)
 	{
 		// シーク失敗
 		newpos.QuadPart=bytepossave;
 		InputStream->Seek(newpos,0,&result);
 		Pos=samplepossave;
-#if 0
 		return E_FAIL;
-#endif
-		return false;
 	}
 	
 	StreamPos=DataStart+newbytepos;
@@ -470,21 +399,14 @@ bool TCWFDecoder::SetPosition(tjs_uint64 samplepos)
 	SamplePos = Samples + remnant * Header.channels;
 	BufferRemain = Header.samplesperblock - remnant;
 
-#if 0
 	return S_OK;
-#endif
-	return true;
 }
 //---------------------------------------------------------------------------
-#if 0
-HRESULT TCWFDecoder::Open(wchar_t * url)
-#endif
-bool TCWFDecoder::Open(const ttstr & url)
+HRESULT TCWFDecoder::Open(TSS_LPWSTR url)
 {
 	// url で指定された URL を開きます
 	InputStream = NULL;
 
-#if 0
 	HRESULT hr;
 
 	hr = StorageProvider->GetStreamForRead(url, (IUnknown**)&InputStream);
@@ -492,13 +414,6 @@ bool TCWFDecoder::Open(const ttstr & url)
 	{
 		InputStream = NULL;
 		return hr;
-	}
-#endif
-
-	InputStream = TVPCreateIStream(url, TJS_BS_READ);
-	if(!InputStream)
-	{
-		return false;
 	}
 
 	ULONG read;
@@ -510,24 +425,17 @@ bool TCWFDecoder::Open(const ttstr & url)
 	newpos.QuadPart=0;
 	ULARGE_INTEGER result;
 	InputStream->Seek(newpos,0,&result);
-#if 0
-	if(result.QuadPart != (tjs_uint64) newpos.QuadPart) return E_FAIL;
-#endif
-	if(result.QuadPart != (tjs_uint64) newpos.QuadPart) return false;
+	if(result.QuadPart != (uint64_t) newpos.QuadPart) return E_FAIL;
 
 	// TCWF0 チェック
 	InputStream->Read(&Header, sizeof(Header), &read);
-#if 0
 	if(read!=sizeof(Header)) return E_FAIL;
 	if(memcmp(Header.mark,"TCWF0\x1a", 6)) return E_FAIL; // マーク
-#endif
-	if(read!=sizeof(Header)) return false;
-	if(memcmp(Header.mark,"TCWF0\x1a", 6)) return false; // マーク
 
 	// 現在位置を取得
 	newpos.QuadPart=0;
 	InputStream->Seek(newpos,1,&result);
-	StreamPos=(long)result.QuadPart;
+	StreamPos=(TSS_LONG)result.QuadPart;
 	DataStart=StreamPos;
 
 	// その他、初期化
@@ -536,6 +444,8 @@ bool TCWFDecoder::Open(const ttstr & url)
 
 #if 0
 	ZeroMemory(&TSSFormat, sizeof(TSSFormat));
+#endif
+	memset(&TSSFormat, 0, sizeof(TSSFormat));
 	TSSFormat.dwSamplesPerSec = Header.frequency;
 	TSSFormat.dwChannels = Header.channels;
 	TSSFormat.dwBitsPerSample = 16;
@@ -543,22 +453,7 @@ bool TCWFDecoder::Open(const ttstr & url)
 	TSSFormat.ui64TotalSamples = 0;
 	TSSFormat.dwTotalTime = 0;
 
-#endif
-	memset(&TSSFormat, 0, sizeof(TSSFormat));
-	TSSFormat.SamplesPerSec = Header.frequency;
-	TSSFormat.Channels = Header.channels;
-	TSSFormat.BitsPerSample = 16;
-	TSSFormat.BytesPerSample = 2;
-	TSSFormat.Seekable = 2;
-	TSSFormat.TotalSamples = 0;
-	TSSFormat.TotalTime = 0;
-	TSSFormat.SpeakerConfig = 0;
-	TSSFormat.IsFloat = false;
-
-#if 0
 	return S_OK;
-#endif
-	return true;
 }
 //---------------------------------------------------------------------------
 bool TCWFDecoder::ReadBlock(int numchans, int chan)
@@ -578,11 +473,11 @@ bool TCWFDecoder::ReadBlock(int numchans, int chan)
 	ULARGE_INTEGER result;
 	newpos.QuadPart=0;
 	InputStream->Seek(newpos,1,&result);
-	if((long)result.QuadPart!=StreamPos)
+	if((TSS_LONG)result.QuadPart!=StreamPos)
 	{
 		newpos.QuadPart=StreamPos;
 		InputStream->Seek(newpos,0,&result);
-		if(result.QuadPart != (tjs_uint64) newpos.QuadPart) return false;
+		if(result.QuadPart != (uint64_t) newpos.QuadPart) return false;
 	}
 
 
@@ -692,8 +587,19 @@ bool TCWFDecoder::ReadBlock(int numchans, int chan)
 }
 //---------------------------------------------------------------------------
 
-static TCWFWaveDecoderCreator creator;
+// ##########################################################################
+//---------------------------------------------------------------------------
+EXPORT(HRESULT) GetModuleInstance(ITSSModule **out,
+	ITSSStorageProvider *provider,
+	IStream * config, TSS_HWND mainwin)
+{
+	StorageProvider = provider;
+	*out = new TCWFModule();
+	return S_OK;
+}
+//---------------------------------------------------------------------------
 
+#ifdef TVP_COMPILING_KRKRSDL2
 //---------------------------------------------------------------------------
 // tTJSNC_WutcwfInternal : wutcwf internal class
 //---------------------------------------------------------------------------
@@ -735,23 +641,11 @@ tTJSNativeInstance *tTJSNC_WutcwfInternal::CreateNativeInstance()
 }
 static iTJSDispatch2 * TVPCreateNativeClass_WutcwfInternal(iTJSDispatch2* global)
 {
-	TVPRegisterWaveDecoderCreator(&creator);
+	TVPRegisterTSSWaveDecoder(&GetModuleInstance);
+
 	iTJSDispatch2 *cls = new tTJSNC_WutcwfInternal();
 	return cls;
 }
 
 static tTVPAtInstallClass TVPInstallClassWutcwfInternal(TJS_W("WutcwfInternal"), TVPCreateNativeClass_WutcwfInternal, TJS_W(""));
-
-// ##########################################################################
-//---------------------------------------------------------------------------
-#if 0
-EXPORT(HRESULT) GetModuleInstance(ITSSModule **out,
-	ITSSStorageProvider *provider,
-	IStream * config, HWND mainwin)
-{
-	StorageProvider = provider;
-	*out = new TCWFModule();
-	return S_OK;
-}
 #endif
-//---------------------------------------------------------------------------
