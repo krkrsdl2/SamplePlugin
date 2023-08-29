@@ -10,3 +10,5 @@
 *.res
 *.sbr
 .vs/
+build/
+build-*/

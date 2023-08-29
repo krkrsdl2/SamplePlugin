@@ -38,6 +38,71 @@
     "HOMEBREW_NO_INSTALL_CLEANUP" : "1",
   },
   "jobs" : {
+    "build-web" : {
+      "runs-on" : "ubuntu-20.04",
+      "timeout-minutes" : 20,
+      "env" : {
+        "EM_VERSION" : "3.1.24",
+        "EM_CACHE_FOLDER" : "emsdk-cache"
+      },
+      "steps" : [
+        {
+          "name" : "Checkout repository",
+          "uses" : "actions/checkout@v3",
+          "with" : {
+            "submodules" : "recursive"
+          }
+        },
+        {
+          "name" : "Install dependencies",
+          "run" : "sudo apt-get update && sudo apt-get install build-essential libsdl2-dev git"
+        },
+        {
+          "name" : "Setup cache",
+          "id" : "cache-system-libraries",
+          "uses" : "actions/cache@v2",
+          "with" : {
+            "path" : "${{env.EM_CACHE_FOLDER}}",
+            "key" : "${{env.EM_VERSION}}-${{ runner.os }}"
+          }
+        },
+        {
+          "uses" : "mymindstorm/setup-emsdk@v11",
+          "with" : {
+            "version" : "${{env.EM_VERSION}}",
+            "actions-cache-folder" : "${{env.EM_CACHE_FOLDER}}"
+          }
+        },
+        {
+          "name" : "Set up Homebrew environment for Github Actions",
+          "run" : "echo \"/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin\" >> $GITHUB_PATH"
+        },
+        {
+          "name" : "Set up default build tools",
+          "run" : "brew install make nasm ninja cmake"
+        },
+        {
+          "name" : "Configure project",
+          "run" : "emcmake cmake -S . -B build"
+        },
+        {
+          "name" : "Build project",
+          "run" : "cmake --build build"
+        },
+        {
+          "name" : "Archive artifact",
+          "run" : "cd build && 7z a -tzip ${{ github.event.repository.name }}-web.zip *.so"
+        },
+        {
+          "name" : "Upload artifact",
+          "uses" : "actions/upload-artifact@master",
+          "with" : {
+            "name" : "${{ github.event.repository.name }}-web",
+            "path" : "build/*.zip"
+          }
+        }
+      ]
+    },
     "build-ubuntu" : {
       "runs-on" : "ubuntu-20.04",
       "timeout-minutes" : 20,
@@ -122,12 +187,13 @@
     },
     "create-release" : {
       "needs" : [
+        "build-web",
         "build-macos-cmake",
         "build-ubuntu"
       ],
       "runs-on" : "ubuntu-20.04",
       "timeout-minutes" : 20,
-      "if" : "github.ref == 'refs/heads/main'",
+      "if" : "github.ref == 'refs/heads/krkrsdl2'",
       "steps" : [
         {
           "name" : "Download all artifacts",
@@ -139,12 +205,12 @@
         },
         {
           "name" : "Create prerelease",
-          "if" : "github.ref == 'refs/heads/main'",
+          "if" : "github.ref == 'refs/heads/krkrsdl2'",
           "uses" : "marvinpinto/action-automatic-releases@latest",
           "with" : {
             "repo_token" : "${{ secrets.GITHUB_TOKEN }}",
             "prerelease" : "true",
-            "automatic_release_tag" : "latest",
+            "automatic_release_tag" : "latest_krkrsdl2",
             "title" : "Latest development builds",
             "files" : "*.zip"
           }
