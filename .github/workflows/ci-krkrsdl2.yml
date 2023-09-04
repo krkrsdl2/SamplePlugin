@@ -148,6 +148,90 @@
         }
       ]
     },
+    "build-android" : {
+      "runs-on" : "ubuntu-20.04",
+      "timeout-minutes" : 20,
+      "strategy" : {
+        "fail-fast" : false,
+        "matrix" : {
+          "platform" : [
+            {
+              "android_abi" : "armeabi-v7a",
+              "extra_cmake_flags" : "-DANDROID_ARM_NEON=ON"
+            },
+            {
+              "android_abi" : "arm64-v8a",
+              "extra_cmake_flags" : ""
+            },
+            {
+              "android_abi" : "x86",
+              "extra_cmake_flags" : ""
+            },
+            {
+              "android_abi" : "x86_64",
+              "extra_cmake_flags" : ""
+            }
+          ]
+        }
+      },
+      "steps" : [
+        {
+          "name" : "Checkout repository",
+          "uses" : "actions/checkout@v3",
+          "with" : {
+            "submodules" : "recursive"
+          }
+        },
+        {
+          "name" : "Install dependencies",
+          "run" : "sudo apt-get update && sudo apt-get install build-essential libsdl2-dev"
+        },
+        {
+          "name" : "Set up Homebrew environment for Github Actions",
+          "run" : "echo \"/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin\" >> $GITHUB_PATH"
+        },
+        {
+          "name" : "Set up default build tools",
+          "run" : "brew install make nasm ninja cmake"
+        },
+        {
+          "name" : "Set up Android NDK",
+          "uses" : "nttld/setup-ndk@v1",
+          "id" : "setup_ndk",
+          "with" : {
+            "ndk-version" : "r21e"
+          }
+        },
+        {
+          "name" : "Set up Java",
+          "uses" : "actions/setup-java@v3",
+          "with" : {
+            "distribution" : "temurin",
+            "java-version" : "11"
+          }
+        },
+        {
+          "name" : "Configure project",
+          "run" : "cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=${{ steps.setup_ndk.outputs.ndk-path }}/build/cmake/android.toolchain.cmake -DANDROID_PLATFORM=android-19 -DANDROID_ABI=${{ matrix.platform.android_abi }} ${{ matrix.platform.extra_cmake_flags }}"
+        },
+        {
+          "name" : "Build project",
+          "run" : "cmake --build build"
+        },
+        {
+          "name" : "Archive artifact",
+          "run" : "cd build && 7z a -tzip ${{ github.event.repository.name }}-android-${{ matrix.platform.android_abi }}.zip *.so"
+        },
+        {
+          "name" : "Upload artifact",
+          "uses" : "actions/upload-artifact@master",
+          "with" : {
+            "name" : "${{ github.event.repository.name }}-android-${{ matrix.platform.android_abi }}",
+            "path" : "build/*.zip"
+          }
+        }
+      ]
+    },
     "build-macos-cmake" : {
       "runs-on" : "macos-11",
       "timeout-minutes" : 20,
@@ -187,6 +271,7 @@
     },
     "create-release" : {
       "needs" : [
+        "build-android",
         "build-web",
         "build-macos-cmake",
         "build-ubuntu"
