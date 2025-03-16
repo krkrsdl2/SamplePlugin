@@ -210,7 +210,7 @@
         },
         {
           "name" : "Set up default build tools",
-          "run" : "brew install make nasm ninja cmake"
+          "run" : "brew install p7zip make nasm ninja cmake"
         },
         {
           "name" : "Configure project",
@@ -222,7 +222,7 @@
         },
         {
           "name" : "Archive artifact",
-          "run" : "ditto -ck --rsrc --sequesterRsrc build/*.so build/${{ github.event.repository.name }}-macos.zip",
+          "run" : "cd build && 7z a -tzip ${{ github.event.repository.name }}-macos.zip *.so"
         },
         {
           "name" : "Upload artifact",
