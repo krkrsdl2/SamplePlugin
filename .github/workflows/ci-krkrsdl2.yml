@@ -12,6 +12,7 @@
         "**.py",
         "**.yml",
         "**.gradle",
+        "**.cmake",
         "CMakeLists.txt"
       ]
     },
@@ -26,6 +27,7 @@
         "**.py",
         "**.yml",
         "**.gradle",
+        "**.cmake",
         "CMakeLists.txt"
       ]
     }
@@ -36,91 +38,175 @@
     "HOMEBREW_NO_AUTO_UPDATE" : "1",
     "HOMEBREW_NO_INSTALL_UPGRADE" : "1",
     "HOMEBREW_NO_INSTALL_CLEANUP" : "1",
+    "DEBIAN_FRONTEND" : "noninteractive",
+    "TZ" : "Japan",
   },
   "jobs" : {
-    "build-web" : {
-      "runs-on" : "ubuntu-20.04",
+    "build-ubuntu" : {
+      "strategy" : {
+        "fail-fast" : false,
+        "matrix" : {
+          "platform" : [
+            {
+              "target-name" : "web",
+              "artifact-to-archive" : "*.so",
+              "artifact-path" : "build/*.zip",
+              "example-project-path" : "",
+              "cmake-extra-configure-prepend" : "emcmake",
+              "cmake-extra-configure-append" : "",
+              "container" : "emscripten/emsdk:3.1.24",
+              "container-options" : " ",
+              "has-brew" : "false",
+              "runs-on" : "ubuntu-latest"
+            },
+            {
+              "target-name" : "ubuntu",
+              "artifact-to-archive" : "*.so",
+              "artifact-path" : "build/*.zip",
+              "example-project-path" : "",
+              "cmake-extra-configure-prepend" : "",
+              "cmake-extra-configure-append" : "",
+              "container" : "ghcr.io/homebrew/ubuntu20.04:latest",
+              "container-options" : "--user 0",
+              "has-brew" : "true",
+              "runs-on" : "ubuntu-latest"
+            },
+            {
+              "target-name" : "ubuntu-arm64",
+              "artifact-to-archive" : "*.so",
+              "artifact-path" : "build/*.zip",
+              "example-project-path" : "",
+              "cmake-extra-configure-prepend" : "",
+              "cmake-extra-configure-append" : "",
+              "container" : "ubuntu:20.04",
+              "container-options" : "--user 0",
+              "has-brew" : "false",
+              "runs-on" : "ubuntu-24.04-arm"
+            }
+          ]
+        }
+      },
+      "runs-on" : "${{ matrix.platform.runs-on }}",
       "timeout-minutes" : 20,
-      "env" : {
-        "EM_VERSION" : "3.1.24",
-        "EM_CACHE_FOLDER" : "emsdk-cache"
+      "container" : {
+        "image" : "${{ matrix.platform.container }}",
+        "options" : "${{ matrix.platform.container-options }}"
       },
       "steps" : [
         {
+          "name" : "Install dependencies (Alphine)",
+          "if" : "matrix.platform.target-name == 'vita'",
+          "run" : "apk update\napk add cmake make ninja git curl\n"
+        },
+        {
+          "name" : "Set up base environment (Ubuntu)",
+          "if" : "matrix.platform.target-name != 'vita' && matrix.platform.target-name != 'switch'",
+          "run" : "apt-get -y update && apt-get -y -o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold' install build-essential"
+        },
+        {
+          "name" : "Install dependencies (Ubuntu)",
+          "if" : "startsWith(matrix.platform.target-name, 'ubuntu')",
+          "run" : "apt-get -y update && apt-get -y -o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold' install libsdl2-dev"
+        },
+        {
+          "name" : "Install additional dependencies (No Homebrew)",
+          "if" : "matrix.platform.target-name == 'web' || matrix.platform.target-name == 'switch' || matrix.platform.target-name == 'ubuntu-arm64'",
+          "run" : "apt-get -y update && apt-get -y -o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold' install p7zip-full cmake make ninja-build git curl"
+        },
+        {
+          "name" : "Set up Homebrew environment for Github Actions",
+          "if" : "matrix.platform.has-brew == 'true'",
+          "run" : "printf '%s\\n' '/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin' >> $GITHUB_PATH"
+        },
+        {
+          "name" : "Set up default build tools (Homebrew)",
+          "if" : "matrix.platform.has-brew == 'true'",
+          "run" : "sudo -H -u linuxbrew bash -c 'cd /home/linuxbrew && /home/linuxbrew/.linuxbrew/bin/brew install p7zip make nasm ninja cmake'"
+        },
+        {
+          "name" : "Set up extra CMake parameters",
+          "if" : "startsWith(matrix.platform.target-name, 'win32-')",
+          "run" : "printf '%s\\n' 'CMAKE_EXTRA_PARAMS=-DCMAKE_SYSTEM_PROCESSOR=${{ matrix.platform.cmake-system-compiler }} -DCMAKE_C_COMPILER=${{ matrix.platform.triplet }}-gcc -DCMAKE_CXX_COMPILER=${{ matrix.platform.triplet }}-g++ -DCMAKE_RC_COMPILER=${{ matrix.platform.triplet }}-windres' >> $GITHUB_ENV"
+        },
+        {
+          "name" : "Set up mingw-w64 for Clang",
+          "if" : "contains(matrix.platform.target-name, '-clang')",
+          "run" : "printf '%s\\n' '/opt/llvm-mingw/bin' >> $GITHUB_PATH"
+        },
+        {
           "name" : "Checkout repository",
-          "uses" : "actions/checkout@v3",
+          "uses" : "actions/checkout@v4",
           "with" : {
             "submodules" : "recursive"
           }
         },
         {
-          "name" : "Install dependencies",
-          "run" : "sudo apt-get update && sudo apt-get install build-essential libsdl2-dev git"
+          "name" : "Clean current assets folder (Android)",
+          "if" : "matrix.platform.target-name == 'android'",
+          "run" : "rm -rf android-project/app/src/main/assets && mkdir -p android-project/app/src/main/assets"
         },
         {
-          "name" : "Setup cache",
-          "id" : "cache-system-libraries",
-          "uses" : "actions/cache@v2",
+          "name" : "Set up JDK 17 (Android)",
+          "if" : "matrix.platform.target-name == 'android'",
+          "uses" : "actions/setup-java@v4",
           "with" : {
-            "path" : "${{env.EM_CACHE_FOLDER}}",
-            "key" : "${{env.EM_VERSION}}-${{ runner.os }}"
+            "distribution" : "temurin",
+            "java-version" : "17"
           }
         },
         {
-          "uses" : "mymindstorm/setup-emsdk@v11",
-          "with" : {
-            "version" : "${{env.EM_VERSION}}",
-            "actions-cache-folder" : "${{env.EM_CACHE_FOLDER}}"
-          }
+          "name" : "Set up Android SDK (Android)",
+          "if" : "matrix.platform.target-name == 'android'",
+          "uses" : "android-actions/setup-android@v3"
         },
         {
-          "name" : "Set up Homebrew environment for Github Actions",
-          "run" : "echo \"/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin\" >> $GITHUB_PATH"
+          "name" : "Configure project (General)",
+          "if" : "matrix.platform.target-name != 'android'",
+          "run" : "${{ matrix.platform.cmake-extra-configure-prepend }} cmake -S . -B build $CMAKE_EXTRA_PARAMS ${{ matrix.platform.cmake-extra-configure-append }} -DCMAKE_BUILD_TYPE=Release"
         },
         {
-          "name" : "Set up default build tools",
-          "run" : "brew install make nasm ninja cmake"
-        },
-        {
-          "name" : "Configure project",
-          "run" : "emcmake cmake -S . -B build"
-        },
-        {
-          "name" : "Build project",
+          "name" : "Build project (General)",
+          "if" : "matrix.platform.target-name != 'android'",
           "run" : "cmake --build build"
         },
         {
-          "name" : "Archive artifact",
-          "run" : "cd build && 7z a -tzip ${{ github.event.repository.name }}-web.zip *.so"
+          "name" : "Build project (Android)",
+          "if" : "matrix.platform.target-name == 'android'",
+          "run" : "cd android-project\n./gradlew assembleRelease -Dcmake.dir=$(dirname $(dirname $(which cmake)))\n"
+        },
+        {
+          "name" : "Archive artifact (General)",
+          "if" : "matrix.platform.artifact-to-archive != ''",
+          "run" : "cd build && 7z a -tzip ${{ github.event.repository.name }}-${{ matrix.platform.target-name }}.zip ${{ matrix.platform.artifact-to-archive }}"
+        },
+        {
+          "name" : "Rename artifact (Android)",
+          "if" : "matrix.platform.target-name == 'android'",
+          "run" : "cp android-project/app/build/outputs/apk/release/krkrsdl2_*.apk ./krkrsdl2.apk"
         },
         {
           "name" : "Upload artifact",
-          "uses" : "actions/upload-artifact@master",
+          "uses" : "actions/upload-artifact@v4",
           "with" : {
-            "name" : "${{ github.event.repository.name }}-web",
-            "path" : "build/*.zip"
+            "name" : "${{ github.event.repository.name }}-${{ matrix.platform.target-name }}",
+            "path" : "${{ matrix.platform.artifact-path }}"
           }
         }
       ]
     },
-    "build-ubuntu" : {
-      "runs-on" : "ubuntu-20.04",
+    "build-macos-cmake" : {
+      "runs-on" : "macos-14",
       "timeout-minutes" : 20,
+      "strategy" : {
+        "fail-fast" : false
+      },
       "steps" : [
         {
           "name" : "Checkout repository",
-          "uses" : "actions/checkout@v3",
+          "uses" : "actions/checkout@v4",
           "with" : {
             "submodules" : "recursive"
           }
-        },
-        {
-          "name" : "Install dependencies",
-          "run" : "sudo apt-get update && sudo apt-get install build-essential libsdl2-dev"
-        },
-        {
-          "name" : "Set up Homebrew environment for Github Actions",
-          "run" : "echo \"/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin\" >> $GITHUB_PATH"
         },
         {
           "name" : "Set up default build tools",
@@ -128,7 +214,7 @@
         },
         {
           "name" : "Configure project",
-          "run" : "cmake -S . -B build"
+          "run" : "cmake -DCMAKE_OSX_ARCHITECTURES='arm64;x86_64' -S . -B build"
         },
         {
           "name" : "Build project",
@@ -136,20 +222,24 @@
         },
         {
           "name" : "Archive artifact",
-          "run" : "cd build && 7z a -tzip ${{ github.event.repository.name }}-ubuntu.zip *.so"
+          "run" : "ditto -ck --rsrc --sequesterRsrc build/*.so build/${{ github.event.repository.name }}-macos.zip",
         },
         {
           "name" : "Upload artifact",
-          "uses" : "actions/upload-artifact@master",
+          "uses" : "actions/upload-artifact@v4",
           "with" : {
-            "name" : "${{ github.event.repository.name }}-ubuntu",
+            "name" : "${{ github.event.repository.name }}-macos${{ matrix.appbundle.artifactnameappendix }}",
             "path" : "build/*.zip"
           }
         }
       ]
     },
     "build-android" : {
-      "runs-on" : "ubuntu-20.04",
+      "runs-on" : "ubuntu-latest",
+      "container" : {
+        "image" : "ghcr.io/homebrew/ubuntu20.04:latest",
+        "options" : "--user 0"
+      },
       "timeout-minutes" : 20,
       "strategy" : {
         "fail-fast" : false,
@@ -184,15 +274,15 @@
         },
         {
           "name" : "Install dependencies",
-          "run" : "sudo apt-get update && sudo apt-get install build-essential libsdl2-dev"
+          "run" : "apt-get -y update && apt-get -y -o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold' install build-essential libsdl2-dev"
         },
         {
           "name" : "Set up Homebrew environment for Github Actions",
-          "run" : "echo \"/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin\" >> $GITHUB_PATH"
+          "run" : "printf '%s\\n' '/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin' >> $GITHUB_PATH"
         },
         {
           "name" : "Set up default build tools",
-          "run" : "brew install make nasm ninja cmake"
+          "run" : "sudo -H -u linuxbrew bash -c 'cd /home/linuxbrew && /home/linuxbrew/.linuxbrew/bin/brew install p7zip make nasm ninja cmake'"
         },
         {
           "name" : "Set up Android NDK",
@@ -232,61 +322,27 @@
         }
       ]
     },
-    "build-macos-cmake" : {
-      "runs-on" : "macos-11",
-      "timeout-minutes" : 20,
-      "steps" : [
-        {
-          "name" : "Checkout repository",
-          "uses" : "actions/checkout@v3",
-          "with" : {
-            "submodules" : "recursive"
-          }
-        },
-        {
-          "name" : "Set up default build tools",
-          "run" : "brew install make nasm ninja cmake p7zip"
-        },
-        {
-          "name" : "Configure project",
-          "run" : "cmake -S . -B build"
-        },
-        {
-          "name" : "Build project",
-          "run" : "cmake --build build"
-        },
-        {
-          "name" : "Archive artifact",
-          "run" : "cd build && 7z a -tzip ${{ github.event.repository.name }}-macos.zip *.so"
-        },
-        {
-          "name" : "Upload artifact",
-          "uses" : "actions/upload-artifact@master",
-          "with" : {
-            "name" : "${{ github.event.repository.name }}-macos",
-            "path" : "build/*.zip"
-          }
-        }
-      ]
-    },
     "create-release" : {
       "needs" : [
         "build-android",
-        "build-web",
         "build-macos-cmake",
         "build-ubuntu"
       ],
-      "runs-on" : "ubuntu-20.04",
+      "runs-on" : "ubuntu-latest",
+      "container" : {
+        "image" : "ubuntu:20.04",
+        "options" : "--user 0"
+      },
       "timeout-minutes" : 20,
       "if" : "github.ref == 'refs/heads/krkrsdl2'",
       "steps" : [
         {
           "name" : "Download all artifacts",
-          "uses" : "actions/download-artifact@v3"
+          "uses" : "actions/download-artifact@v4"
         },
         {
           "name" : "Prepare artifacts for release",
-          "run" : "cp -t . ${{ github.event.repository.name }}-*/*.zip"
+          "run" : "cp -t . ${{ github.event.repository.name }}-*/*.zip\n"
         },
         {
           "name" : "Create prerelease",
@@ -297,7 +353,7 @@
             "prerelease" : "true",
             "automatic_release_tag" : "latest_krkrsdl2",
             "title" : "Latest development builds",
-            "files" : "*.zip"
+            "files" : "*.zip\n"
           }
         }
       ]
